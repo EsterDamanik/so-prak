@@ -1,0 +1,218 @@
+======================================================= TUGAS PERTEMUAN 3 =============================================================
+ 
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <stdlib.h>
+ 
+// pecah string per kata
+void split_words(char *string, char **words)
+{
+    int i;
+    words[0] = strtok(string, " \n");
+    for (i = 0; words[i]; i++)
+        words[i+1] = strtok(NULL, " \n");
+}
+ 
+int main()
+{
+        //char cwd[1024];
+    char cmd[80];                           //  string perintah
+    char *args[20];                         //  argumen string perintah
+ 
+    while (1)
+    {
+        printf("$ ");                   //  cetak prompt "$ "
+ 
+        fgets(cmd, 80, stdin);  //  baca string perintah
+ 
+       // puts(cmd);
+ 
+        //  pecah string perintah per argumen
+                split_words(cmd, args);
+ 
+        //  jika perintah = "exit"
+        //      break
+        if(strcmp(args[0], "exit")==0)
+                        break;
+ 
+        //  jika perintah = "cd"
+        //      ganti direktori
+        //      continue
+                else if (strcmp(args[0], "cd") == 0) //jika perintah = "cd"
+        {
+            if (args[1] != NULL)
+            {
+                if (chdir(args[1]) != 0) // ganti dir
+                {
+                    perror(args[0]);
+                }
+            }
+           // getcwd(cwd, sizeof(cwd));
+                        //printf("Current working dir: %s\n", cwd);
+            continue;
+        }
+ 
+        //  buat proses child:
+        //      exec string perintah
+        //      cetak pesan error
+        //      keluar dengan kode -1
+ 
+                pid_t ch_pid = fork();
+                if (ch_pid == 0){
+                        if (execvp(args[0], args) == -1){
+                                perror(args[0]);
+                                exit(EXIT_FAILURE);
+                        }
+                }
+ 
+        //  tunggu child selesai
+        else if(ch_pid > 0){
+                        int status;
+                        waitpid(ch_pid, &status, 0);
+                }
+                else{
+                        perror(args[0]);
+                }
+    }
+ 
+    return 0;
+}
+ 
+ 
+======================================================= TUGAS PERTEMUAN 4 =============================================================
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <signal.h>
+ 
+/*
+void foo(int sig) {
+        printf("got signal %d\n", sig); // print signum
+        signal(SIGINT, SIG_DFL); // back to default
+}
+int main() {
+        signal(SIGINT, foo);
+        while (1) {
+                puts("hello");
+                sleep(1);
+        }
+}
+// Praktikum Sistem
+*/
+ 
+ 
+int main()
+ 
+{
+        pid_t child = fork();
+        if (child == 0) {
+        while (1) {
+                puts("Its_Me_Hannnn");
+                sleep(1);
+        }
+        } else {
+                sleep(4);
+                kill(child, SIGSTOP); // terminate
+                sleep(3);
+                kill(child, SIGCONT);
+                sleep(2);
+                kill(child, SIGTERM);
+        }
+        return 0;
+}
+ 
+ 
+/*
+void ding(int sig) { puts("ding!"); }
+int main()
+{
+        if (fork() == 0) {
+ 
+                sleep(5);
+                kill(getppid(), SIGALRM);
+        } else {
+                //
+                puts("waiting...");
+                pause();
+                signal(SIGALRM, ding);
+        }
+        return 0;
+}
+ 
+*/
+ 
+======================================================= TUGAS PERTEMUAN 5 =============================================================
+#include <stdio.h>
+#include <pthread.h>
+#define N 16
+ 
+int sum = 0;
+ 
+void* arraySum(void* arg) {
+    int* array = (int*)arg;
+    int tmp = 0;
+ 
+    for (int i = 0; i < N; i++) {
+        tmp += array[i];
+    }
+ 
+    sum = tmp;
+ 
+ 
+    pthread_exit(NULL);
+}
+ 
+ 
+ 
+int main() {
+        pthread_t x[N];
+ 
+    int Arr[N] = {68, 34, 64, 95, 35, 78, 65, 93, 51, 67, 7, 77, 4, 73, 52, 91};
+ 
+    for(int i = 0; i < (N/4); i++){
+                pthread_create(&x[i], NULL, arraySum, (void*)Arr);
+                pthread_join(x[i], NULL);
+        }
+ 
+        printf("Sum = %d\n", sum);
+    return 0;
+}
+ 
+======================================================= TUGAS PERTEMUAN 6 =============================================================
+#include <stdio.h>
+#include <pthread.h>
+#include <stdlib.h>
+#define N 100000
+#define T 4
+ 
+int sum = 0;
+pthread_mutex_t mtx;
+void *array_sum(void *arg)
+{
+        int *A = (int*)arg; // cast void* --> int*
+        int i;
+        for (i = 0; i < N/T; i++){
+                pthread_mutex_lock(&mtx);
+                sum += A[i];
+                pthread_mutex_unlock(&mtx);
+        }
+        pthread_exit(NULL);
+}
+ 
+int main()
+{
+        pthread_t t[T];
+        int A[N], i;
+        pthread_mutex_init(&mtx, NULL);
+ 
+        for (i = 0; i < N; i++)
+                A[i] = rand()%10;
+        for (i = 0; i < T; i++)
+                pthread_create(&t[i], NULL, array_sum, &A[i*N/T]);
+        for (i = 0; i < T; i++)
+                pthread_join(t[i], NULL);
+        printf("%d\n", sum); // 448706
+        return 0;
+}
